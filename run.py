@@ -1,16 +1,4 @@
 #!/usr/bin/env python3
-from typing import List
-
-# https://stackapi.readthedocs.io/en/latest/user/advanced.html?highlight=key#send-data-via-the-api
-
-# TODO right. not sure if there is any benefit in using authorised user? not that much data is private
-
-
-from stackapi import StackAPI
-
-from ssecrets import *
-
-
 # see https://api.stackexchange.com/docs
 ENDPOINTS = [
     "users/{ids}",
@@ -45,31 +33,38 @@ ENDPOINTS = [
 ]
 
 
-# check it out here https://api.stackexchange.com/docs/read-filter#filters=!SnL4e6G*07of2S.ynb&filter=default&run=true
-# FILTER = '!SnL4e6G*07of2S.ynb'
-FILTER = '!LVBj2-meNpvsiW3UvI3lD('
-# private filters: answer.{accepted, downvoted, upvoted}; comment.upvoted . wonder why, accepted is clearly visible on the website..
-
-
 # FILTER = 'default'
+FILTER = '!LVBj2-meNpvsiW3UvI3lD('
+# check it out here https://api.stackexchange.com/docs/read-filter#filters=!SnL4e6G*07of2S.ynb&filter=default&run=true
+# TODO eh, better make it explicit with 'filter' api call https://api.stackexchange.com/docs/create-filter
+# private filters: answer.{accepted, downvoted, upvoted}; comment.upvoted . wonder why, accepted is clearly visible on the website..
+#
+
+
+from typing import List
+
+from stackapi import StackAPI
+
+from ssecrets import *
+
+# api = StackAPI('stackoverflow', key=key, access_token=access_token)
+# right. not sure if there is any benefit in using authorised user? not that much data is private
 
 def run(user_id: str, apis: List[str]):
-    # api = StackAPI('stackoverflow')
-    api = StackAPI('stackoverflow', key=key, access_token=access_token)
+    # TODO FIXME use apis
+    # TODO use sites? https://api.stackexchange.com/docs/sites
+    api = StackAPI('stackoverflow')
     data = {}
     # TODO eh, don't think I need rest of paginated stuff??
-    for ep in ENDPOINTS[:2]:
-        ep = ep.format(ids=user_id, id=user_id)
-        name = ep.split('/')[-1]
-        data[name] = api.fetch(
-            ep,
-            # TODO mm. withbody doesn't add body_markdown, where at it's somewhat more useful...
+    for ep in ENDPOINTS:
+        # TODO eh, gonna end up with weird 
+        data[ep] = api.fetch(
+            endpoint=ep.format(ids=user_id, id=user_id),
             filter=FILTER,
         )['items']
     import json
     import sys
     json.dump(data, sys.stdout, ensure_ascii=False, indent=1)
-    # TODO shit, looks like it only gives away answer ids?
 
 
 def main():
