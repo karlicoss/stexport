@@ -134,7 +134,17 @@ def run(user_id: str, sites: List[str]):
 
 def main():
     logging.basicConfig(level=logging.DEBUG)
-    sites = get_all_sites()
+    import argparse
+    p = argparse.ArgumentParser('stexport')
+    g = p.add_mutually_exclusive_group()
+    g.add_argument('--all-sites', action='store_true')
+    g.add_argument('--site', action='append')
+    args = p.parse_args()
+
+    sites = args.site
+    if args.all_sites:
+        sites = list(sorted(get_all_sites().keys())) # sort for determinism
+    assert sites is not None
     run(
         user_id=user_id,
         sites=sites,
