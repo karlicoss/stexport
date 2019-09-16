@@ -7,29 +7,52 @@ ENDPOINTS = [
     "users/{ids}/comments",
     "users/{ids}/favorites",
     "users/{ids}/mentioned",
-    "users/{id}/network-activity",
-    "users/{id}/notifications",
+
+    ##  these don't take 'site' parameter..
+    # "users/{id}/network-activity",
+    # "users/{id}/notifications",
+    ##
+
     "users/{ids}/posts",
     "users/{id}/privileges",
     "users/{ids}/questions",
-    # users/{ids}/questions/featured # TODO not ure if necessary?
+
+    ## these overlap with 'questions'
+    # users/{ids}/questions/featured
     # users/{ids}/questions/no-answers
     # users/{ids}/questions/unaccepted
     # users/{ids}/questions/unanswered
+    ##
+
+
     "users/{ids}/reputation",
     "users/{ids}/reputation-history",
+
+    ## this needs auth token
     # users/{id}/reputation-history/full
+    ##
+
     "users/{ids}/suggested-edits",
     "users/{ids}/tags",
+
+    ## these overlap with 'tags'
     # users/{id}/tags/{tags}/top-answers
     # users/{id}/tags/{tags}/top-questions
+    ##
+
     "users/{ids}/timeline",
     "users/{id}/top-answer-tags",
     "users/{id}/top-question-tags",
     "users/{id}/top-tags",
-    "users/{id}/write-permissions",
+
+    ## TODO err, this was often resulting in internal server error...
+    # "users/{id}/write-permissions",
+    ##
+
+    ## these need auth token, not sure how useful are they
     # users/{id}/inbox
     # users/{id}/inbox/unread
+    ##
 ]
 
 
@@ -41,7 +64,7 @@ FILTER = '!LVBj2-meNpvsiW3UvI3lD('
 #
 
 
-from typing import List
+from typing import Dict, List
 import logging
 
 from stackapi import StackAPI
@@ -51,22 +74,42 @@ from ssecrets import *
 def get_logger():
     return logging.getLogger('stexport')
 
-# api = StackAPI('stackoverflow', key=key, access_token=access_token)
-# right. not sure if there is any benefit in using authorised user? not that much data is private
 
-def get_all_sites() -> List[str]:
-    # hacky way to get everything..
-    api = StackAPI('stackoverflow')
+# few wrappers to make less api calls ti 'sites' endpoint..
+from functools import lru_cache
+@lru_cache()
+def get_api():
+    # TODO FIXME max_page documentation is wrong, it's 5 by default?
+    kinda_infinity = 1_000_000
+    # api = StackAPI('stackoverflow', max_pages=kinda_infinity)
+
+    api = StackAPI('stackoverflow', key=key, access_token=access_token)
+    # right. not sure if there is any benefit in using authorised user? not that much data is private
+
+    api._name = None
     api._api_key = None
+    return api
+
+@lru_cache()
+def get_all_sites() -> Dict[str, str]:
+    # hacky way to get everything..
+    api = get_api()
     res = api.fetch('sites')
-    # TODO err, it's a bit too many sites
-    return [s['api_site_parameter'] for s in res['items']]
+    return {s['api_site_parameter']: s['name'] for s in res['items']}
+
+
+def get_site_api(site: str):
+    sites = get_all_sites()
+    api = get_api()
+    api._name = sites[site]
+    api._api_key = site
+    return api
 
 
 def run_one(user_id: str, site: str):
     logger = get_logger()
     logger.info('exporting %s: started...', site)
-    api = StackAPI(site)
+    api = get_site_api(site)
     data = {}
     for ep in ENDPOINTS:
         # TODO eh, gonna end up with weird
