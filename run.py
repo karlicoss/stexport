@@ -46,7 +46,11 @@ ENDPOINTS = [
 
 
 # check it out here https://api.stackexchange.com/docs/read-filter#filters=!SnL4e6G*07of2S.ynb&filter=default&run=true
-FILTER = '!SnL4e6G*07of2S.ynb'
+# FILTER = '!SnL4e6G*07of2S.ynb'
+FILTER = '!LVBj2-meNpvsiW3UvI3lD('
+# private filters: answer.{accepted, downvoted, upvoted}; comment.upvoted . wonder why, accepted is clearly visible on the website..
+
+
 # FILTER = 'default'
 
 def run(user_id: str, apis: List[str]):
