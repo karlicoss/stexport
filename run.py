@@ -4,7 +4,6 @@ from typing import List
 # https://stackapi.readthedocs.io/en/latest/user/advanced.html?highlight=key#send-data-via-the-api
 
 # TODO right. not sure if there is any benefit in using authorised user? not that much data is private
-# SITE = StackAPI('stackoverflow', key=key, access_token=access_token)
 
 
 from stackapi import StackAPI
@@ -45,14 +44,24 @@ ENDPOINTS = [
     # users/{id}/inbox/unread
 ]
 
+
+# check it out here https://api.stackexchange.com/docs/read-filter#filters=!SnL4e6G*07of2S.ynb&filter=default&run=true
+FILTER = '!SnL4e6G*07of2S.ynb'
+# FILTER = 'default'
+
 def run(user_id: str, apis: List[str]):
-    api = StackAPI('stackoverflow')
+    # api = StackAPI('stackoverflow')
+    api = StackAPI('stackoverflow', key=key, access_token=access_token)
     data = {}
     # TODO eh, don't think I need rest of paginated stuff??
     for ep in ENDPOINTS[:2]:
         ep = ep.format(ids=user_id, id=user_id)
         name = ep.split('/')[-1]
-        data[name] = api.fetch(ep)
+        data[name] = api.fetch(
+            ep,
+            # TODO mm. withbody doesn't add body_markdown, where at it's somewhat more useful...
+            filter=FILTER,
+        )['items']
     import json
     import sys
     json.dump(data, sys.stdout, ensure_ascii=False, indent=1)
