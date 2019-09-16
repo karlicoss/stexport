@@ -42,35 +42,59 @@ FILTER = '!LVBj2-meNpvsiW3UvI3lD('
 
 
 from typing import List
+import logging
 
 from stackapi import StackAPI
 
 from ssecrets import *
 
+def get_logger():
+    return logging.getLogger('stexport')
+
 # api = StackAPI('stackoverflow', key=key, access_token=access_token)
 # right. not sure if there is any benefit in using authorised user? not that much data is private
 
-def run(user_id: str, apis: List[str]):
-    # TODO FIXME use apis
-    # TODO use sites? https://api.stackexchange.com/docs/sites
+def get_all_sites() -> List[str]:
+    # hacky way to get everything..
     api = StackAPI('stackoverflow')
+    api._api_key = None
+    res = api.fetch('sites')
+    # TODO err, it's a bit too many sites
+    return [s['api_site_parameter'] for s in res['items']]
+
+
+def run_one(user_id: str, site: str):
+    logger = get_logger()
+    logger.info('exporting %s: started...', site)
+    api = StackAPI(site)
     data = {}
-    # TODO eh, don't think I need rest of paginated stuff??
     for ep in ENDPOINTS:
-        # TODO eh, gonna end up with weird 
+        # TODO eh, gonna end up with weird
+        logger.info('exporting %s: %s', site, ep)
         data[ep] = api.fetch(
             endpoint=ep.format(ids=user_id, id=user_id),
             filter=FILTER,
         )['items']
+    return data
+
+
+def run(user_id: str, sites: List[str]):
+    logger = get_logger()
+    logger.info('exporting %s', sites)
+    all_data = {}
+    for site in sites:
+        all_data[site] = run_one(user_id, site=site)
     import json
     import sys
-    json.dump(data, sys.stdout, ensure_ascii=False, indent=1)
+    json.dump(all_data, sys.stdout, ensure_ascii=False, indent=1)
 
 
 def main():
+    logging.basicConfig(level=logging.DEBUG)
+    sites = get_all_sites()
     run(
         user_id=user_id,
-        apis=['stackoverflow'],
+        sites=sites,
     )
 
 if __name__ == '__main__':
