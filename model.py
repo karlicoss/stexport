@@ -44,7 +44,7 @@ class SiteModel:
 
     @property
     def questions(self):
-        return self.j['users/{ids}/questions']
+        return list(sorted(map(Question, self.j['users/{ids}/questions']), key=lambda q: q.creation_date))
 
 
 class Model:
