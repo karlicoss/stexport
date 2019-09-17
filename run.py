@@ -57,7 +57,7 @@ ENDPOINTS = [
 
 
 # FILTER = 'default'
-FILTER = '!LVBj2-meNpvsiW3UvI3lD('
+FILTER = '!LVBj2(M0Wr1s_VedzkH(VG'
 # check it out here https://api.stackexchange.com/docs/read-filter#filters=!SnL4e6G*07of2S.ynb&filter=default&run=true
 # TODO eh, better make it explicit with 'filter' api call https://api.stackexchange.com/docs/create-filter
 # private filters: answer.{accepted, downvoted, upvoted}; comment.upvoted . wonder why, accepted is clearly visible on the website..
