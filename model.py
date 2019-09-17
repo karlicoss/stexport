@@ -25,6 +25,10 @@ class Question(NamedTuple):
         return self.j['title']
 
     @property
+    def body_markdown(self) -> str:
+        return self.j['body_markdown']
+
+    @property
     def tags(self) -> Sequence[str]:
         return self.j['tags']
 
