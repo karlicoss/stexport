@@ -69,7 +69,7 @@ import logging
 
 from stackapi import StackAPI
 
-from ssecrets import *
+from stackexchange_secrets import *
 
 def get_logger():
     return logging.getLogger('stexport')
