@@ -69,7 +69,8 @@ import json
 from typing import Dict, List, Optional
 import logging
 
-from stackapi import StackAPI # type: ignore
+import backoff # type: ignore
+from stackapi import StackAPI, StackAPIError # type: ignore
 
 def get_logger():
     return logging.getLogger('stexport')
@@ -89,6 +90,18 @@ def _get_api(**kwargs):
     api._name = None
     api._api_key = None
     return api
+
+
+
+@backoff.on_exception(
+    backoff.expo,
+    StackAPIError,
+    # ugh, not sure why is it happening..
+    giveup=lambda e: "Remote end closed connection without response" not in e.message,
+    logger=get_logger(),
+)
+def fetch_backoff(api, *args, **kwargs):
+    return api.fetch(*args, **kwargs)
 
 
 class Exporter:
@@ -117,7 +130,8 @@ class Exporter:
         for ep in ENDPOINTS:
             self.logger.info('exporting %s: %s', site, ep)
             # TODO ugh. still not sure about using weird patterns as dictionary keys...
-            data[ep] = api.fetch(
+            data[ep] = fetch_backoff(
+                api,
                 endpoint=ep.format(ids=self.user_id, id=self.user_id),
                 filter=FILTER,
             )['items']
