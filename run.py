@@ -64,12 +64,12 @@ FILTER = '!LVBj2(M0Wr1s_VedzkH(VG'
 #
 
 
-from typing import Dict, List
+import argparse
+import json
+from typing import Dict, List, Optional
 import logging
 
-from stackapi import StackAPI
-
-from stackexchange_secrets import *
+from stackapi import StackAPI # type: ignore
 
 def get_logger():
     return logging.getLogger('stexport')
@@ -78,77 +78,90 @@ def get_logger():
 # few wrappers to make less api calls ti 'sites' endpoint..
 from functools import lru_cache
 @lru_cache()
-def get_api():
+def _get_api(**kwargs):
     # TODO FIXME max_page documentation is wrong, it's 5 by default?
     kinda_infinity = 1_000_000
     # api = StackAPI('stackoverflow', max_pages=kinda_infinity)
 
-    api = StackAPI('stackoverflow', key=key, access_token=access_token)
+    api = StackAPI('stackoverflow', **kwargs)
     # right. not sure if there is any benefit in using authorised user? not that much data is private
 
     api._name = None
     api._api_key = None
     return api
 
-@lru_cache()
-def get_all_sites() -> Dict[str, str]:
-    # hacky way to get everything..
-    api = get_api()
-    res = api.fetch('sites')
-    return {s['api_site_parameter']: s['name'] for s in res['items']}
+
+class Exporter:
+    def __init__(self,  **kwargs) -> None:
+        self.api = _get_api(**kwargs)
+        self.user_id = kwargs['user_id']
+        self.logger = get_logger()
+
+    @lru_cache()
+    def get_all_sites(self) -> Dict[str, str]:
+        # hacky way to get everything..
+        res = self.api.fetch('sites')
+        return {s['api_site_parameter']: s['name'] for s in res['items']}
+
+    def get_site_api(self, site: str):
+        sites = self.get_all_sites()
+        api = _get_api()
+        api._name = sites[site]
+        api._api_key = site
+        return api
+
+    def export_site(self, site: str):
+        self.logger.info('exporting %s: started...', site)
+        api = self.get_site_api(site)
+        data = {}
+        for ep in ENDPOINTS:
+            self.logger.info('exporting %s: %s', site, ep)
+            # TODO ugh. still not sure about using weird patterns as dictionary keys...
+            data[ep] = api.fetch(
+                endpoint=ep.format(ids=self.user_id, id=self.user_id),
+                filter=FILTER,
+            )['items']
+        return data
 
 
-def get_site_api(site: str):
-    sites = get_all_sites()
-    api = get_api()
-    api._name = sites[site]
-    api._api_key = site
-    return api
+    def export_json(self, sites: Optional[List[str]]):
+        """
+        sites: None means all of them
+        """
+        if sites is None:
+            sites = list(sorted(self.get_all_sites().keys())) # sort for determinism
 
+        self.logger.info('exporting %s', sites)
 
-def run_one(user_id: str, site: str):
-    logger = get_logger()
-    logger.info('exporting %s: started...', site)
-    api = get_site_api(site)
-    data = {}
-    for ep in ENDPOINTS:
-        # TODO eh, gonna end up with weird
-        logger.info('exporting %s: %s', site, ep)
-        data[ep] = api.fetch(
-            endpoint=ep.format(ids=user_id, id=user_id),
-            filter=FILTER,
-        )['items']
-    return data
-
-
-def run(user_id: str, sites: List[str]):
-    logger = get_logger()
-    logger.info('exporting %s', sites)
-    all_data = {}
-    for site in sites:
-        all_data[site] = run_one(user_id, site=site)
-    import json
-    import sys
-    json.dump(all_data, sys.stdout, ensure_ascii=False, indent=1)
+        all_data = {}
+        for site in sites:
+            all_data[site] = self.export_site(site=site)
+        return all_data
 
 
 def main():
     logging.basicConfig(level=logging.DEBUG)
-    import argparse
-    p = argparse.ArgumentParser('stexport')
-    g = p.add_mutually_exclusive_group()
+
+    from export_helper import setup_parser
+    p = argparse.ArgumentParser('Export your personal Stackexchange data')
+    setup_parser(parser=p, params=['key', 'access_token', 'user_id'])
+    g = p.add_mutually_exclusive_group(required=True)
     g.add_argument('--all-sites', action='store_true')
     g.add_argument('--site', action='append')
     args = p.parse_args()
 
+    params = args.params
+    dumper = args.dumper
+
+    exporter = Exporter(**params)
+
     sites = args.site
     if args.all_sites:
-        sites = list(sorted(get_all_sites().keys())) # sort for determinism
-    assert sites is not None
-    run(
-        user_id=user_id,
-        sites=sites,
-    )
+        sites = None
+    j = exporter.export_json(sites=sites)
+
+    js = json.dumps(j, ensure_ascii=False, indent=1)
+    dumper(js)
 
 if __name__ == '__main__':
     main()
