@@ -1,0 +1,3 @@
+[submodule "src/stexport/exporthelpers"]
+	path = src/stexport/exporthelpers
+	url = https://github.com/karlicoss/exporthelpers.git

@@ -1,0 +1,78 @@
+#+begin_src python :dir src :results drawer :exports results
+import stexport.export as E; return E.make_parser().prog
+#+end_src
+
+#+RESULTS:
+:results:
+Export your personal Stackexchange data
+:end:
+
+
+* Setting up
+1. The easiest way is =pip3 install --user git+https://github.com/karlicoss/stexport=.
+
+   Alternatively, use =git clone --recursive=, or =git pull && git submodules update --init=. After that, you can use =pip3 install --editable=.
+2. See [[https://meta.stackexchange.com/questions/261829/where-i-can-get-my-access-token-key-for-the-api][this]] for info on getting application =key= and =access_token=
+# TODO hmm, do we need user access token at all? not sure
+# key is probably needed to have more queries
+# TODO I have some notes on getting the token in my private secrets.py file
+
+* Exporting
+
+#+begin_src python :dir src :results drawer :exports results
+import stexport.export as E; return E.make_parser().epilog
+#+end_src
+
+#+RESULTS:
+:results:
+
+Usage:
+
+*Recommended*: create =secrets.py= keeping your api parameters, e.g.:
+
+
+: key = "KEY"
+: access_token = "ACCESS_TOKEN"
+: user_id = "USER_ID"
+
+
+After that, use:
+
+: python3 -m stexport.export --secrets /path/to/secrets.py
+
+That way you type less and have control over where you keep your plaintext secrets.
+
+*Alternatively*, you can pass parameters directly, e.g.
+
+: python3 -m stexport.export --key <key> --access_token <access_token> --user_id <user_id>
+
+However, this is verbose and prone to leaking your keys/tokens/passwords in shell history.
+
+
+
+I *highly* recommend checking exported files at least once just to make sure they contain everything you expect from your export. If not, please feel free to ask or raise an issue!
+
+:end:
+
+
+* Using data
+  
+#+begin_src python :dir src  :results drawer :exports results
+import stexport.exporthelpers.dal_helper as D; return D.make_parser().epilog
+#+end_src
+
+#+RESULTS:
+:results:
+
+You can use =stexport.dal= (stands for "Data Access/Abstraction Layer") to access your exported data, even offline.
+I elaborate on motivation behind it [[https://beepb00p.xyz/exports.html#dal][here]].
+
+- main usecase is to be imported as python module to allow for *programmatic access* to your data.
+
+  You can find some inspiration in [[https://beepb00p.xyz/mypkg.html][=my.=]] package that I'm using as an API to all my personal data.
+
+- to test it against your export, simply run: ~python3 -m stexport.dal --source /path/to/export~
+
+- you can also try it interactively: ~python3 -m stexport.dal --source /path/to/export --interactive~
+
+:end:

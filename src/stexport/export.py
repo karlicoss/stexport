@@ -72,9 +72,11 @@ import logging
 import backoff # type: ignore
 from stackapi import StackAPI, StackAPIError # type: ignore
 
-def get_logger():
-    return logging.getLogger('stexport')
 
+from .exporthelpers.export_helper import Json
+from .exporthelpers.logging_helper import LazyLogger
+
+logger = LazyLogger('stexport')
 
 # few wrappers to make less api calls ti 'sites' endpoint..
 from functools import lru_cache
@@ -98,7 +100,7 @@ def _get_api(**kwargs):
     StackAPIError,
     # ugh, not sure why is it happening..
     giveup=lambda e: "Remote end closed connection without response" not in e.message,
-    logger=get_logger(),
+    logger=logger,
 )
 def fetch_backoff(api, *args, **kwargs):
     return api.fetch(*args, **kwargs)
@@ -108,7 +110,6 @@ class Exporter:
     def __init__(self,  **kwargs) -> None:
         self.api = _get_api(**kwargs)
         self.user_id = kwargs['user_id']
-        self.logger = get_logger()
 
     @lru_cache()
     def get_all_sites(self) -> Dict[str, str]:
@@ -123,12 +124,12 @@ class Exporter:
         api._api_key = site
         return api
 
-    def export_site(self, site: str):
-        self.logger.info('exporting %s: started...', site)
+    def export_site(self, site: str) -> Json:
+        logger.info('exporting %s: started...', site)
         api = self.get_site_api(site)
         data = {}
         for ep in ENDPOINTS:
-            self.logger.info('exporting %s: %s', site, ep)
+            logger.info('exporting %s: %s', site, ep)
             # TODO ugh. still not sure about using weird patterns as dictionary keys...
             data[ep] = fetch_backoff(
                 api,
@@ -138,14 +139,14 @@ class Exporter:
         return data
 
 
-    def export_json(self, sites: Optional[List[str]]):
+    def export_json(self, sites: Optional[List[str]]) -> Json:
         """
         sites: None means all of them
         """
         if sites is None:
             sites = list(sorted(self.get_all_sites().keys())) # sort for determinism
 
-        self.logger.info('exporting %s', sites)
+        logger.info('exporting %s', sites)
 
         all_data = {}
         for site in sites:
@@ -153,17 +154,22 @@ class Exporter:
         return all_data
 
 
-def main():
-    logging.basicConfig(level=logging.DEBUG)
-
-    from export_helper import setup_parser
-    p = argparse.ArgumentParser('Export your personal Stackexchange data')
-    setup_parser(parser=p, params=['key', 'access_token', 'user_id'])
-    g = p.add_mutually_exclusive_group(required=True)
+def make_parser() -> argparse.ArgumentParser:
+    from .exporthelpers.export_helper import setup_parser, Parser
+    parser = Parser('Export your personal Stackexchange data')
+    setup_parser(
+        parser=parser,
+        params=['key', 'access_token', 'user_id'],
+    )
+    g = parser.add_mutually_exclusive_group(required=True)
     g.add_argument('--all-sites', action='store_true')
     g.add_argument('--site', action='append')
-    args = p.parse_args()
+    return parser
 
+
+def main() -> None:
+    parser = make_parser()
+    args = parser.parse_args()
     params = args.params
     dumper = args.dumper
 
@@ -176,6 +182,7 @@ def main():
 
     js = json.dumps(j, ensure_ascii=False, indent=1)
     dumper(js)
+
 
 if __name__ == '__main__':
     main()
