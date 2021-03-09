@@ -93,6 +93,40 @@ def _get_api(**kwargs):
     api._api_key = None
     return api
 
+@lru_cache()
+def get_all_sites(api) -> Dict[str, str]:
+    """Returns all the StackExchange sites as a dict, api_site_parameter -> name"""
+    # hacky way to get everything..
+    res = api.fetch('sites')
+    return {s['api_site_parameter']: s['name'] for s in res['items']}
+
+
+@lru_cache()
+def get_user_sites(api) -> Dict[str, str]:
+    """
+    Returns all the associated sites for the /me user. The /me user is the one who's
+    access_token we're authorized with (so it's required)
+    Returned as a dict. api_site_parameter -> name
+    """
+    # Get all the associated site names, just like from the output of get_all_sites
+    res = api.fetch('me/associated')
+    # Remove the ' Stack Exchange' at the end of the names to make them match
+    associate_site_names = [s['site_name'].replace(' Stack Exchange', '') for s in res['items']]
+
+    # Invert get_all_sites to map name to api_site_parameter
+    all_sites_inv = {v: k for k, v in get_all_sites(api).items()}
+    # Return all of me's associated sites with the same api_site_parameter
+    # mapping as get_all_sites
+    # This isn't a 1-to-1 mapping unfortunately... :c
+    user_sites_inv = {n: all_sites_inv[n] if n in all_sites_inv.keys() else None for n in associate_site_names}
+
+    # Notify of missing mappings
+    for k, v in user_sites_inv.items():
+        if v == None:
+            logger.warning(f'Missing site mapping for {k}, didnt match all_sites format')
+
+    # Flip for return to be like get_all_sites, filter out missings
+    return {v: k for k, v in user_sites_inv.items() if v != None}
 
 
 @backoff.on_exception(
@@ -111,15 +145,9 @@ class Exporter:
         self.api = _get_api(**kwargs)
         self.user_id = kwargs['user_id']
 
-    @lru_cache()
-    def get_all_sites(self) -> Dict[str, str]:
-        # hacky way to get everything..
-        res = self.api.fetch('sites')
-        return {s['api_site_parameter']: s['name'] for s in res['items']}
-
     def get_site_api(self, site: str):
-        sites = self.get_all_sites()
         api = _get_api()
+        sites = get_all_sites(api)
         api._name = sites[site]
         api._api_key = site
         return api
@@ -143,11 +171,6 @@ class Exporter:
         """
         sites: None means all of them
         """
-        if sites is None:
-            sites = list(sorted(self.get_all_sites().keys())) # sort for determinism
-
-        logger.info('exporting %s', sites)
-
         all_data = {}
         for site in sites:
             all_data[site] = self.export_site(site=site)
@@ -163,6 +186,7 @@ def make_parser() -> argparse.ArgumentParser:
     )
     g = parser.add_mutually_exclusive_group(required=True)
     g.add_argument('--all-sites', action='store_true')
+    g.add_argument('--user-sites', action='store_true')
     g.add_argument('--site', action='append')
     return parser
 
@@ -173,11 +197,17 @@ def main() -> None:
     params = args.params
     dumper = args.dumper
 
+    generalApi = _get_api(**params) #API for general queries, not on a site
     exporter = Exporter(**params)
 
     sites = args.site
     if args.all_sites:
-        sites = None
+        sites = list(sorted(get_all_sites(generalApi).keys())) # sort for determinism
+    elif args.user_sites:
+        sites = list(sorted(get_user_sites(generalApi).keys()))
+
+    logger.info('exporting %s', sites)
+
     j = exporter.export_json(sites=sites)
 
     js = json.dumps(j, ensure_ascii=False, indent=1)
