@@ -11,7 +11,7 @@ Export your personal Stackexchange data
 * Setting up
 1. The easiest way is =pip3 install --user git+https://github.com/karlicoss/stexport=.
 
-   Alternatively, use =git clone --recursive=, or =git pull && git submodules update --init=. After that, you can use =pip3 install --editable=.
+   Alternatively, use =git clone --recursive=, or =git pull && git submodule update --init=. After that, you can use =pip3 install --editable=.
 2. See [[https://meta.stackexchange.com/questions/261829/where-i-can-get-my-access-token-key-for-the-api][this]] for info on getting application =key= and =access_token=
 # TODO hmm, do we need user access token at all? not sure
 # key is probably needed to have more queries
