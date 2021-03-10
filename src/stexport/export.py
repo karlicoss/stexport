@@ -142,11 +142,12 @@ def fetch_backoff(api, *args, **kwargs):
 
 class Exporter:
     def __init__(self,  **kwargs) -> None:
-        self.api = _get_api(**kwargs)
+        self.api_params = kwargs
+        self.api = _get_api(**self.api_params)
         self.user_id = kwargs['user_id']
 
     def get_site_api(self, site: str):
-        api = _get_api()
+        api = _get_api(**self.api_params)
         sites = get_all_sites(api)
         api._name = sites[site]
         api._api_key = site
@@ -159,11 +160,12 @@ class Exporter:
         for ep in ENDPOINTS:
             logger.info('exporting %s: %s', site, ep)
             # TODO ugh. still not sure about using weird patterns as dictionary keys...
-            data[ep] = fetch_backoff(
+            r = fetch_backoff(
                 api,
                 endpoint=ep.format(ids=self.user_id, id=self.user_id),
                 filter=FILTER,
-            )['items']
+            )
+            data[ep] = r['items']
         return data
 
 
