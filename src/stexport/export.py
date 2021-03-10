@@ -129,15 +129,27 @@ def get_user_sites(api) -> Dict[str, str]:
     return {v: k for k, v in user_sites_inv.items() if v is not None}
 
 
+class RetryMe(Exception):
+    pass
+
+
 @backoff.on_exception(
     backoff.expo,
-    StackAPIError,
-    # ugh, not sure why is it happening..
-    giveup=lambda e: "Remote end closed connection without response" not in e.message,
+    RetryMe,
     logger=logger,
 )
 def fetch_backoff(api, *args, **kwargs):
-    return api.fetch(*args, **kwargs)
+    try:
+        return api.fetch(*args, **kwargs)
+    except StackAPIError as e:
+        if "Remote end closed connection without response" in e.message:
+            # ugh, not sure why is it happening, but seems trainsient
+            raise RetryMe from e
+        elif "Expecting value: line 1 column 1 (char 0)" in e.message:
+            # weird, also happens for no good reason occasionally?
+            raise RetryMe from e
+        else:
+            raise e
 
 
 class Exporter:
