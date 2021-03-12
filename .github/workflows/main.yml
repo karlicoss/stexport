@@ -7,8 +7,10 @@ on:
     tags: 'v[0-9]+.*' # only trigger on 'release' tags for PyPi
     # Ideally I would put this in the pypi job... but github syntax doesn't allow for regexes there :shrug:
     # P.S. fuck made up yaml DSLs.
-    # TODO cron?
+  # Note that people who fork it need to go to "Actions" tab on their fork and click "I understand my workflows, go ahead and enable them".
+  pull_request: # needed to trigger on others' PRs
   workflow_dispatch: # needed to trigger workflows manually
+  # todo cron?
 
 env:
   # useful for scripts & sometimes tests to know
