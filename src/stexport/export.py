@@ -111,7 +111,7 @@ def get_user_sites(api) -> Dict[str, str]:
     # Get all the associated site names, just like from the output of get_all_sites
     res = api.fetch('me/associated')
     # Remove the ' Stack Exchange' at the end of the names to make them match
-    associate_site_names = [s['site_name'].replace(' Stack Exchange', '') for s in res['items']]
+    associate_site_names: List[str] = [s['site_name'].replace(' Stack Exchange', '') for s in res['items']]
 
     # Invert get_all_sites to map name to api_site_parameter
     all_sites_inv = {v: k for k, v in get_all_sites(api).items()}
@@ -126,7 +126,7 @@ def get_user_sites(api) -> Dict[str, str]:
             logger.warning(f'Missing site mapping for {k}, didnt match all_sites format')
 
     # Flip for return to be like get_all_sites, filter out missings
-    return {v: k for k, v in user_sites_inv.items() if v != None}
+    return {v: k for k, v in user_sites_inv.items() if v is not None}
 
 
 @backoff.on_exception(
@@ -167,7 +167,7 @@ class Exporter:
         return data
 
 
-    def export_json(self, sites: Optional[List[str]]) -> Json:
+    def export_json(self, sites: List[str]) -> Json:
         """
         sites: None means all of them
         """
