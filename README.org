@@ -12,12 +12,31 @@ Export your personal Stackexchange data
 1. The easiest way is =pip3 install --user git+https://github.com/karlicoss/stexport=.
 
    Alternatively, use =git clone --recursive=, or =git pull && git submodule update --init=. After that, you can use =pip3 install --editable=.
-2. See [[https://meta.stackexchange.com/questions/261829/where-i-can-get-my-access-token-key-for-the-api][this]] for info on getting application =key= and =access_token=
-# TODO hmm, do we need user access token at all? not sure
-# key is probably needed to have more queries
-# TODO I have some notes on getting the token in my private secrets.py file
+2. Take note of your =user_id=, you can find it in your profile link
+   e.g. for me it's =706399= (=https://stackoverflow.com/users/706389/karlicoss=)
+3. Get API =key=
+   Register a new Oauth app [[https://meta.stackexchange.com/questions/261829/where-i-can-get-my-access-token-key-for-the-api][this]] for information.
+   Once you've registered, find your app in [[https://stackapps.com/apps/oauth][the list]] and take note of
+   - 'Key' -- this is your =key= parameter
+   - 'Client Id' and 'Oauth Domain/Redirect URI' -- this might be useful for the next step
+4. Get API =access_token=
+   This is optional, since in principle you can run the script without access token.
+   But some functionality won't work (e.g. =--user-sites=), and you might miss some of your private data, so it's recommended to do.
+
+   Visit the following link, but
+
+   - instead of =12345=, substitute 'Client Id' from step 3
+   - instead of =http://example.com=, substitute 'Redirect URI' from step 3
+
+   : https://stackoverflow.com/oauth/dialog?client_id=12345&redirect_uri=http://example.com&scope=private_info+no_expiry
+   # https://api.stackexchange.com/docs/authentication#scope
+   After that you should be authorised and redirected. Copy the =access_token= somewhere, you'll need it later.
 
 * Exporting
+
+NOTE: even if you decided not to use =access_token=, you still need to pass the parameter, just set it to empty string.
+# TODO ugh. it doesn't capture --all-sites or --user-sites or anything. ugh
+# really need a more literate approach somehow..
 
 #+begin_src python :dir src :results drawer :exports results
 import stexport.export as E; return E.make_parser().epilog
