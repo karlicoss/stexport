@@ -12,14 +12,12 @@ Export your personal Stackexchange data
 1. The easiest way is =pip3 install --user git+https://github.com/karlicoss/stexport=.
 
    Alternatively, use =git clone --recursive=, or =git pull && git submodule update --init=. After that, you can use =pip3 install --editable=.
-2. Take note of your =user_id=, you can find it in your profile link
-   e.g. for me it's =706399= (=https://stackoverflow.com/users/706389/karlicoss=)
-3. Get API =key=
+2. Get API =key=
    Register a new Oauth app [[https://meta.stackexchange.com/questions/261829/where-i-can-get-my-access-token-key-for-the-api][this]] for information.
    Once you've registered, find your app in [[https://stackapps.com/apps/oauth][the list]] and take note of
    - 'Key' -- this is your =key= parameter
    - 'Client Id' and 'Oauth Domain/Redirect URI' -- this might be useful for the next step
-4. Get API =access_token=
+3. Get API =access_token=
    This is optional, since in principle you can run the script without access token.
    But some functionality won't work (e.g. =--user-sites=), and you might miss some of your private data, so it's recommended to do.
 
@@ -52,7 +50,6 @@ Usage:
 
 : key = "KEY"
 : access_token = "ACCESS_TOKEN"
-: user_id = "USER_ID"
 
 
 After that, use:
@@ -63,7 +60,7 @@ That way you type less and have control over where you keep your plaintext secre
 
 *Alternatively*, you can pass parameters directly, e.g.
 
-: python3 -m stexport.export --key <key> --access_token <access_token> --user_id <user_id>
+: python3 -m stexport.export --key <key> --access_token <access_token>
 
 However, this is verbose and prone to leaking your keys/tokens/passwords in shell history.
 
