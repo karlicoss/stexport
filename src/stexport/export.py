@@ -156,7 +156,6 @@ class Exporter:
     def __init__(self,  **kwargs) -> None:
         self.api_params = kwargs
         self.api = _get_api(**self.api_params)
-        self.user_id = kwargs['user_id']
 
     def get_site_api(self, site: str):
         api = _get_api(**self.api_params)
@@ -168,13 +167,26 @@ class Exporter:
     def export_site(self, site: str) -> Json:
         logger.info('exporting %s: started...', site)
         api = self.get_site_api(site)
+
+        ur = fetch_backoff(
+            api,
+            endpoint='me',
+            filter=FILTER,
+        )
+        items = ur['items']
+        if len(items) == 0:
+            # todo not sure if need to warn? maybe only in --user-sites/--site mode
+            return {}
+        [item] = items
+        user_id = item['user_id']
+
         data = {}
         for ep in ENDPOINTS:
             logger.info('exporting %s: %s', site, ep)
             # TODO ugh. still not sure about using weird patterns as dictionary keys...
             r = fetch_backoff(
                 api,
-                endpoint=ep.format(ids=self.user_id, id=self.user_id),
+                endpoint=ep.format(ids=user_id, id=user_id),
                 filter=FILTER,
             )
             data[ep] = r['items']
@@ -196,8 +208,9 @@ def make_parser() -> argparse.ArgumentParser:
     parser = Parser('Export your personal Stackexchange data')
     setup_parser(
         parser=parser,
-        params=['key', 'access_token', 'user_id'],
+        params=['key', 'access_token'],
     )
+    parser.add_argument('--user-id', type=str, help='DEPRECATED (key/token is enough, option is only for backwards compatibility)')
     g = parser.add_mutually_exclusive_group(required=True)
     g.add_argument('--all-sites', action='store_true')
     g.add_argument('--user-sites', action='store_true')
@@ -210,6 +223,12 @@ def main() -> None:
     args = parser.parse_args()
     params = args.params
     dumper = args.dumper
+
+    _UID = 'user_id'
+    _uid = getattr(args, _UID)
+    if _uid is not None:
+        import warnings
+        warnings.warn(f"'{_UID}' is deprecated, ther is no need to pass it anymore. See https://github.com/karlicoss/stexport/issues/5")
 
     generalApi = _get_api(**params) #API for general queries, not on a site
     exporter = Exporter(**params)
