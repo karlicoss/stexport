@@ -148,6 +148,11 @@ def fetch_backoff(api, *args, **kwargs):
         elif "Expecting value: line 1 column 1 (char 0)" in e.message:
             # weird, also happens for no good reason occasionally?
             raise RetryMe from e
+        elif "unusual number of requests coming from this IP address" in e.message:
+            # happens sometimes close to the rate limit??
+            # also weird error, some sort of HTML page...
+            # typically takes like 30 seconds to pass... so backoff logic manages from like 5th attempt..
+            raise RetryMe from e
         else:
             raise e
 
