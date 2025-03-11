@@ -1,4 +1,5 @@
-#!/usr/bin/env python3
+from __future__ import annotations
+
 # see https://api.stackexchange.com/docs
 ENDPOINTS = [
     "users/{ids}",
@@ -66,24 +67,23 @@ FILTER = '!LVBj2(M0Wr1s_VedzkH(VG'
 
 import argparse
 import json
-from typing import Dict, List, Optional
-import logging
 
-import backoff # type: ignore
-from stackapi import StackAPI, StackAPIError # type: ignore
-
+import backoff
+from stackapi import StackAPI, StackAPIError  # type: ignore[import-untyped]
 
 from .exporthelpers.export_helper import Json
-from .exporthelpers.logging_helper import LazyLogger
+from .exporthelpers.logging_helper import make_logger
 
-logger = LazyLogger('stexport')
+logger = make_logger(__name__)
 
-# few wrappers to make less api calls ti 'sites' endpoint..
+# few wrappers to make less api calls to 'sites' endpoint..
 from functools import lru_cache
-@lru_cache()
+
+
+@lru_cache
 def _get_api(**kwargs):
     # TODO FIXME max_page documentation is wrong, it's 5 by default?
-    kinda_infinity = 1_000_000
+    # kinda_infinity = 1_000_000
     # api = StackAPI('stackoverflow', max_pages=kinda_infinity)
 
     api = StackAPI('stackoverflow', **kwargs)
@@ -93,16 +93,16 @@ def _get_api(**kwargs):
     api._api_key = None
     return api
 
-@lru_cache()
-def get_all_sites(api) -> Dict[str, str]:
+@lru_cache
+def get_all_sites(api) -> dict[str, str]:
     """Returns all the StackExchange sites as a dict, api_site_parameter -> name"""
     # hacky way to get everything..
     res = api.fetch('sites')
     return {s['api_site_parameter']: s['name'] for s in res['items']}
 
 
-@lru_cache()
-def get_user_sites(api) -> Dict[str, str]:
+@lru_cache
+def get_user_sites(api) -> dict[str, str]:
     """
     Returns all the associated sites for the /me user. The /me user is the one who's
     access_token we're authorized with (so it's required)
@@ -111,7 +111,7 @@ def get_user_sites(api) -> Dict[str, str]:
     # Get all the associated site names, just like from the output of get_all_sites
     res = api.fetch('me/associated')
     # Remove the ' Stack Exchange' at the end of the names to make them match
-    associate_site_names: List[str] = [s['site_name'].replace(' Stack Exchange', '') for s in res['items']]
+    associate_site_names: list[str] = [s['site_name'].replace(' Stack Exchange', '') for s in res['items']]
 
     # Invert get_all_sites to map name to api_site_parameter
     all_sites_inv = {v: k for k, v in get_all_sites(api).items()}
@@ -122,7 +122,7 @@ def get_user_sites(api) -> Dict[str, str]:
 
     # Notify of missing mappings
     for k, v in user_sites_inv.items():
-        if v == None:
+        if v is None:
             logger.warning(f'Missing site mapping for {k}, didnt match all_sites format')
 
     # Flip for return to be like get_all_sites, filter out missings
@@ -145,16 +145,15 @@ def fetch_backoff(api, *args, **kwargs):
         if "Remote end closed connection without response" in e.message:
             # ugh, not sure why is it happening, but seems trainsient
             raise RetryMe from e
-        elif "Expecting value: line 1 column 1 (char 0)" in e.message:
+        if "Expecting value: line 1 column 1 (char 0)" in e.message:
             # weird, also happens for no good reason occasionally?
             raise RetryMe from e
-        elif "unusual number of requests coming from this IP address" in e.message:
+        if "unusual number of requests coming from this IP address" in e.message:
             # happens sometimes close to the rate limit??
             # also weird error, some sort of HTML page...
             # typically takes like 30 seconds to pass... so backoff logic manages from like 5th attempt..
             raise RetryMe from e
-        else:
-            raise e
+        raise e
 
 
 class Exporter:
@@ -198,7 +197,7 @@ class Exporter:
         return data
 
 
-    def export_json(self, sites: List[str]) -> Json:
+    def export_json(self, sites: list[str]) -> Json:
         """
         sites: None means all of them
         """
@@ -209,7 +208,7 @@ class Exporter:
 
 
 def make_parser() -> argparse.ArgumentParser:
-    from .exporthelpers.export_helper import setup_parser, Parser
+    from .exporthelpers.export_helper import Parser, setup_parser
     parser = Parser('Export your personal Stackexchange data')
     setup_parser(
         parser=parser,
@@ -240,9 +239,9 @@ def main() -> None:
 
     sites = args.site
     if args.all_sites:
-        sites = list(sorted(get_all_sites(generalApi).keys())) # sort for determinism
+        sites = sorted(get_all_sites(generalApi).keys()) # sort for determinism
     elif args.user_sites:
-        sites = list(sorted(get_user_sites(generalApi).keys()))
+        sites = sorted(get_user_sites(generalApi).keys())
 
     logger.info('exporting %s', sites)
 

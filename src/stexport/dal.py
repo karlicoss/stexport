@@ -1,17 +1,15 @@
-#!/usr/bin/env python3
-from functools import lru_cache
-from pathlib import Path
-from typing import NamedTuple, Sequence, Any, Iterable
-from glob import glob
-from datetime import datetime, timezone
+from __future__ import annotations
+
 import json
-import logging
+from collections.abc import Iterable, Sequence
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import NamedTuple
 
-from .exporthelpers.logging_helper import LazyLogger
 from .exporthelpers.dal_helper import Json
+from .exporthelpers.logging_helper import make_logger
 
-
-logger = LazyLogger('stexport')
+logger = make_logger(__name__)
 
 
 class Question(NamedTuple):
@@ -46,7 +44,7 @@ class SiteDAL(NamedTuple):
 
     @property
     def questions(self) -> Iterable[Question]:
-        return list(sorted(map(Question, self.j['users/{ids}/questions']), key=lambda q: q.creation_date))
+        return sorted(map(Question, self.j['users/{ids}/questions']), key=lambda q: q.creation_date)
 
 
 class DAL:
@@ -56,7 +54,7 @@ class DAL:
         self.data = json.loads(self.src.read_text())
 
     def sites(self) -> Sequence[str]:
-        return list(sorted(self.data.keys()))
+        return sorted(self.data.keys())
 
     def site_dal(self, site: str) -> SiteDAL:
         return SiteDAL(self.data[site])
