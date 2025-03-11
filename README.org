@@ -7,11 +7,16 @@ import stexport.export as E; return E.make_parser().prog
 Export your personal Stackexchange data
 :end:
 
-
 * Setting up
-1. The easiest way is =pip3 install --user git+https://github.com/karlicoss/stexport=.
+1. install with PIP
+   - =pip3 install --user git+https://github.com/karlicoss/stexport=
 
-   Alternatively, use =git clone --recursive=, or =git pull && git submodule update --init=. After that, you can use =pip3 install --editable=.
+   - for export functionality: append =[export]=
+   - for optional extras for logging and faster json processing: append =[optional]=
+   - or any combination of the above, e.g. =[export,optional]=
+
+   - alternatively, use =git clone --recursive=, or =git pull && git submodules update --init=. After that, you can use =pip3 install --editable=.
+
 2. Get API =key=
    Register a new Oauth app [[https://meta.stackexchange.com/questions/261829/where-i-can-get-my-access-token-key-for-the-api][this]] for information.
    Once you've registered, find your app in [[https://stackapps.com/apps/oauth][the list]] and take note of
