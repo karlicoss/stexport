@@ -67,9 +67,16 @@ FILTER = '!LVBj2(M0Wr1s_VedzkH(VG'
 
 import argparse
 import json
+import logging
 
-import backoff
 from stackapi import StackAPI, StackAPIError  # type: ignore[import-untyped]
+from tenacity import (
+    before_sleep_log,
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 from .exporthelpers.export_helper import Json
 from .exporthelpers.logging_helper import make_logger
@@ -133,12 +140,13 @@ class RetryMe(Exception):
     pass
 
 
-@backoff.on_exception(
-    backoff.expo,
-    RetryMe,
-    logger=logger,
+@retry(
+    retry=retry_if_exception_type(RetryMe),
+    wait=wait_exponential(max=10),
+    stop=stop_after_attempt(5),
+    before_sleep=before_sleep_log(logger, logging.INFO)
 )
-def fetch_backoff(api, *args, **kwargs):
+def fetch_with_retry(api, *args, **kwargs):
     try:
         return api.fetch(*args, **kwargs)
     except StackAPIError as e:
@@ -151,7 +159,7 @@ def fetch_backoff(api, *args, **kwargs):
         if "unusual number of requests coming from this IP address" in e.message:
             # happens sometimes close to the rate limit??
             # also weird error, some sort of HTML page...
-            # typically takes like 30 seconds to pass... so backoff logic manages from like 5th attempt..
+            # typically takes like 30 seconds to pass... so retry logic manages from like 5th attempt..
             raise RetryMe from e
         raise e
 
@@ -172,7 +180,7 @@ class Exporter:
         logger.info('exporting %s: started...', site)
         api = self.get_site_api(site)
 
-        ur = fetch_backoff(
+        ur = fetch_with_retry(
             api,
             endpoint='me',
             filter=FILTER,
@@ -188,7 +196,7 @@ class Exporter:
         for ep in ENDPOINTS:
             logger.info('exporting %s: %s', site, ep)
             # TODO ugh. still not sure about using weird patterns as dictionary keys...
-            r = fetch_backoff(
+            r = fetch_with_retry(
                 api,
                 endpoint=ep.format(ids=user_id, id=user_id),
                 filter=FILTER,

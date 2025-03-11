@@ -24,7 +24,7 @@ Homepage = "https://github.com/karlicoss/stexport"
 dal = []
 export = [
     "stackapi",
-    "backoff",  # for retrying
+    "tenacity",  # for retrying API calls
 ]
 optional = [
     "orjson",  # faster json processing
