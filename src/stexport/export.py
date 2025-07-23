@@ -54,7 +54,7 @@ ENDPOINTS = [
     # users/{id}/inbox
     # users/{id}/inbox/unread
     ##
-]
+]  # fmt: skip
 
 
 # FILTER = 'default'
@@ -78,7 +78,7 @@ from tenacity import (
     wait_exponential,
 )
 
-from .exporthelpers.export_helper import Json
+from .exporthelpers.export_helper import Json, Parser, setup_parser
 from .exporthelpers.logging_helper import make_logger
 
 logger = make_logger(__name__)
@@ -99,6 +99,7 @@ def _get_api(**kwargs):
     api._name = None
     api._api_key = None
     return api
+
 
 @lru_cache
 def get_all_sites(api) -> dict[str, str]:
@@ -144,7 +145,7 @@ class RetryMe(Exception):
     retry=retry_if_exception_type(RetryMe),
     wait=wait_exponential(max=10),
     stop=stop_after_attempt(5),
-    before_sleep=before_sleep_log(logger, logging.INFO)
+    before_sleep=before_sleep_log(logger, logging.INFO),
 )
 def fetch_with_retry(api, *args, **kwargs):
     try:
@@ -165,7 +166,7 @@ def fetch_with_retry(api, *args, **kwargs):
 
 
 class Exporter:
-    def __init__(self,  **kwargs) -> None:
+    def __init__(self, **kwargs) -> None:
         self.api_params = kwargs
         self.api = _get_api(**self.api_params)
 
@@ -204,7 +205,6 @@ class Exporter:
             data[ep] = r['items']
         return data
 
-
     def export_json(self, sites: list[str]) -> Json:
         """
         sites: None means all of them
@@ -216,7 +216,6 @@ class Exporter:
 
 
 def make_parser() -> argparse.ArgumentParser:
-    from .exporthelpers.export_helper import Parser, setup_parser
     parser = Parser('Export your personal Stackexchange data')
     setup_parser(
         parser=parser,
@@ -240,14 +239,15 @@ def main() -> None:
     _uid = getattr(args, _UID)
     if _uid is not None:
         import warnings
+
         warnings.warn(f"'{_UID}' is deprecated, ther is no need to pass it anymore. See https://github.com/karlicoss/stexport/issues/5")
 
-    generalApi = _get_api(**params) #API for general queries, not on a site
+    generalApi = _get_api(**params)  # API for general queries, not on a site
     exporter = Exporter(**params)
 
     sites = args.site
     if args.all_sites:
-        sites = sorted(get_all_sites(generalApi).keys()) # sort for determinism
+        sites = sorted(get_all_sites(generalApi).keys())  # sort for determinism
     elif args.user_sites:
         sites = sorted(get_user_sites(generalApi).keys())
 
