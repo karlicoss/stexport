@@ -1,8 +1,3 @@
-# NOTE: version is inferred from pyproject.toml if present
-#   however, if ruff.toml is separate, pyproject isn't even parsed..
-#   see https://github.com/astral-sh/ruff/issues/10299
-target-version = "py39"
-
 lint.extend-select = [
     "F",    # flakes rules -- default, but extend just in case
     "E",    # pycodestyle  -- default, but extend just in case
@@ -34,14 +29,13 @@ lint.extend-select = [
     "ARG",  # unused argument checks
     "A",    # builtin shadowing
     "G",    # logging stuff
-    # "EM",  # TODO hmm could be helpful to prevent duplicate err msg in traceback.. but kinda annoying
 
     # "ALL", # uncomment this to check for new rules!
 ]
 
 # Preserve types, even if a file imports `from __future__ import annotations`
 # we need this for cachew to work with HPI types on 3.9
-# can probably remove after 3.10, when | for union syntax is native?
+# can probably remove after 3.10?
 lint.pyupgrade.keep-runtime-typing = true
 
 lint.ignore = [
@@ -53,6 +47,7 @@ lint.ignore = [
     "FIX",   # complains about fixmes/todos -- annoying
     "TD",    # complains about todo formatting -- too annoying
     "ANN",   # missing type annotations? seems way to strict though
+    "EM" ,   # suggests assigning all exception messages into a variable first... pretty annoying
 
 ### too opinionated style checks
     "E501",  # too long lines
@@ -124,7 +119,7 @@ lint.ignore = [
     "TRY400",  # TODO double check this, might be useful
     "TRY401",  # redundant exception in logging.exception call? TODO double check, might result in excessive logging
 
-    "PGH",  # TODO force error code in mypy instead
+    "PGH",  # TODO force error code in mypy instead? although it also has blanket noqa rule
 
     "TID252",  # Prefer absolute imports over relative imports from parent modules
 
@@ -142,4 +137,10 @@ lint.ignore = [
     "SIM",     # some if statements crap
     "RSE102",  # complains about missing parens in exceptions
     ##
+
+    "PLC0415", # "imports should be at the top level" -- not realistic
+]
+
+
+extend-exclude = [
 ]
