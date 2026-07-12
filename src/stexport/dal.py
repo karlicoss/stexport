@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterable, Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import NamedTuple
 
@@ -33,7 +33,7 @@ class Question(NamedTuple):
     @property
     def creation_date(self) -> datetime:
         # all utc https://api.stackexchange.com/docs/dates
-        return datetime.fromtimestamp(self.j['creation_date'], tz=timezone.utc)
+        return datetime.fromtimestamp(self.j['creation_date'], tz=UTC)
 
     @property
     def link(self) -> str:
@@ -45,7 +45,7 @@ class SiteDAL(NamedTuple):
 
     @property
     def questions(self) -> Iterable[Question]:
-        return sorted(map(Question, self.j['users/{ids}/questions']), key=lambda q: q.creation_date)  # ty: ignore[invalid-argument-type]
+        return sorted(map(Question, self.j['users/{ids}/questions']), key=lambda q: q.creation_date)
 
 
 class DAL:

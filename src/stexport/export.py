@@ -126,7 +126,7 @@ def get_user_sites(api) -> dict[str, str]:
     # Return all of me's associated sites with the same api_site_parameter
     # mapping as get_all_sites
     # This isn't a 1-to-1 mapping unfortunately... :c
-    user_sites_inv = {n: all_sites_inv[n] if n in all_sites_inv.keys() else None for n in associate_site_names}
+    user_sites_inv = {n: all_sites_inv.get(n) for n in associate_site_names}
 
     # Notify of missing mappings
     for k, v in user_sites_inv.items():
@@ -221,7 +221,9 @@ def make_parser() -> argparse.ArgumentParser:
         parser=parser,
         params=['key', 'access_token'],
     )
-    parser.add_argument('--user-id', type=str, help='DEPRECATED (key/token is enough, option is only for backwards compatibility)')
+    parser.add_argument(
+        '--user-id', type=str, help='DEPRECATED (key/token is enough, option is only for backwards compatibility)'
+    )
     g = parser.add_mutually_exclusive_group(required=True)
     g.add_argument('--all-sites', action='store_true')
     g.add_argument('--user-sites', action='store_true')
@@ -240,7 +242,10 @@ def main() -> None:
     if _uid is not None:
         import warnings
 
-        warnings.warn(f"'{_UID}' is deprecated, ther is no need to pass it anymore. See https://github.com/karlicoss/stexport/issues/5")
+        warnings.warn(
+            f"'{_UID}' is deprecated, ther is no need to pass it anymore. See https://github.com/karlicoss/stexport/issues/5",
+            stacklevel=2,
+        )
 
     generalApi = _get_api(**params)  # API for general queries, not on a site
     exporter = Exporter(**params)
