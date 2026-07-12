@@ -57,12 +57,48 @@ ENDPOINTS = [
 ]  # fmt: skip
 
 
-# FILTER = 'default'
-FILTER = '!LVBj2(M0Wr1s_VedzkH(VG'
-# check it out here https://api.stackexchange.com/docs/read-filter#filters=!SnL4e6G*07of2S.ynb&filter=default&run=true
-# TODO eh, better make it explicit with 'filter' api call https://api.stackexchange.com/docs/create-filter
-# private filters: answer.{accepted, downvoted, upvoted}; comment.upvoted . wonder why, accepted is clearly visible on the website..
-#
+# `withbody` omits Markdown bodies and various fields useful for an archive.
+# Create a readable extension with https://api.stackexchange.com/docs/create-filter.
+# Some fields, including answer.{accepted,downvoted,upvoted}, are private.
+# This is surprising for `accepted`, which is clearly visible on the website.
+FILTER_FIELDS = (
+    'answer.accepted',
+    'answer.awarded_bounty_amount',
+    'answer.awarded_bounty_users',
+    'answer.body_markdown',
+    'answer.can_comment',
+    'answer.can_edit',
+    'answer.can_flag',
+    'answer.can_suggest_edit',
+    'answer.comment_count',
+    'answer.comments',
+    'answer.down_vote_count',
+    'answer.downvoted',
+    'answer.last_editor',
+    'answer.link',
+    'answer.share_link',
+    'answer.tags',
+    'answer.title',
+    'answer.up_vote_count',
+    'answer.upvoted',
+    'question.answers',
+    'question.body_markdown',
+    'question.bounty_user',
+    'question.can_close',
+    'question.can_flag',
+    'question.close_vote_count',
+    'question.closed_details',
+    'question.comment_count',
+    'question.comments',
+    'question.delete_vote_count',
+    'question.down_vote_count',
+    'question.favorite_count',
+    'question.last_editor',
+    'question.notice',
+    'question.reopen_vote_count',
+    'question.share_link',
+    'question.up_vote_count',
+)
 
 
 import argparse
@@ -106,6 +142,20 @@ def _get_sites(api) -> list[Json]:
     # hacky way to get everything..
     res = api.fetch('sites')
     return res['items']
+
+
+@lru_cache
+def get_filter(api) -> str:
+    res = api.fetch(
+        'filters/create',
+        base='withbody',
+        include=';'.join(FILTER_FIELDS),
+    )
+    [item] = res['items']
+    assert item['filter_type'] == 'safe', item
+    result = item['filter']
+    assert isinstance(result, str), item
+    return result
 
 
 @lru_cache
@@ -175,6 +225,7 @@ class Exporter:
     def __init__(self, **kwargs) -> None:
         self.api_params = kwargs
         self.api = _get_api(**self.api_params)
+        self.filter = get_filter(self.api)
 
     def get_site_api(self, site: str):
         api = _get_api(**self.api_params)
@@ -190,7 +241,7 @@ class Exporter:
         ur = fetch_with_retry(
             api,
             endpoint='me',
-            filter=FILTER,
+            filter=self.filter,
         )
         items = ur['items']
         if len(items) == 0:
@@ -206,7 +257,7 @@ class Exporter:
             r = fetch_with_retry(
                 api,
                 endpoint=ep.format(ids=user_id, id=user_id),
-                filter=FILTER,
+                filter=self.filter,
             )
             data[ep] = r['items']
         return data
