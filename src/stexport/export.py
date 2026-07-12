@@ -102,11 +102,16 @@ def _get_api(**kwargs):
 
 
 @lru_cache
-def get_all_sites(api) -> dict[str, str]:
-    """Returns all the StackExchange sites as a dict, api_site_parameter -> name"""
+def _get_sites(api) -> list[Json]:
     # hacky way to get everything..
     res = api.fetch('sites')
-    return {s['api_site_parameter']: s['name'] for s in res['items']}
+    return res['items']
+
+
+@lru_cache
+def get_all_sites(api) -> dict[str, str]:
+    """Returns all the StackExchange sites as a dict, api_site_parameter -> name"""
+    return {site['api_site_parameter']: site['name'] for site in _get_sites(api)}
 
 
 @lru_cache
@@ -116,25 +121,26 @@ def get_user_sites(api) -> dict[str, str]:
     access_token we're authorized with (so it's required)
     Returned as a dict. api_site_parameter -> name
     """
-    # Get all the associated site names, just like from the output of get_all_sites
     res = api.fetch('me/associated')
-    # Remove the ' Stack Exchange' at the end of the names to make them match
-    associate_site_names: list[str] = [s['site_name'].replace(' Stack Exchange', '') for s in res['items']]
+    associated_sites = res['items']
 
-    # Invert get_all_sites to map name to api_site_parameter
-    all_sites_inv = {v: k for k, v in get_all_sites(api).items()}
-    # Return all of me's associated sites with the same api_site_parameter
-    # mapping as get_all_sites
-    # This isn't a 1-to-1 mapping unfortunately... :c
-    user_sites_inv = {n: all_sites_inv.get(n) for n in associate_site_names}
+    sites_by_url = {site['site_url']: site for site in _get_sites(api)}
 
-    # Notify of missing mappings
-    for k, v in user_sites_inv.items():
-        if v is None:
-            logger.warning(f'Missing site mapping for {k}, didnt match all_sites format')
+    result = {}
+    for associated_site in associated_sites:
+        site_url = associated_site['site_url']
+        site = sites_by_url.get(site_url)
+        if site is None:
+            logger.warning(
+                'Missing site mapping for %s (%s)',
+                associated_site['site_name'],
+                site_url,
+            )
+            continue
 
-    # Flip for return to be like get_all_sites, filter out missings
-    return {v: k for k, v in user_sites_inv.items() if v is not None}
+        result[site['api_site_parameter']] = site['name']
+
+    return result
 
 
 class RetryMe(Exception):
