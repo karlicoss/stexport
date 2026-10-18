@@ -105,6 +105,9 @@ import argparse
 import json
 import logging
 
+import hpikit.cli.export as cli
+import kloggy
+from hpikit.json import Json
 from stackapi import StackAPI, StackAPIError  # type: ignore[import-untyped]
 from tenacity import (
     before_sleep_log,
@@ -114,17 +117,14 @@ from tenacity import (
     wait_exponential,
 )
 
-from .exporthelpers.export_helper import Json, Parser, setup_parser
-from .exporthelpers.logging_helper import make_logger
-
-logger = make_logger(__name__)
+logger = kloggy.get_logger(__name__)
 
 # few wrappers to make less api calls to 'sites' endpoint..
 from functools import lru_cache
 
 
 @lru_cache
-def _get_api(**kwargs):
+def _get_api(**kwargs) -> StackAPI:
     # TODO FIXME max_page documentation is wrong, it's 5 by default?
     # kinda_infinity = 1_000_000
     # api = StackAPI('stackoverflow', max_pages=kinda_infinity)
@@ -138,14 +138,14 @@ def _get_api(**kwargs):
 
 
 @lru_cache
-def _get_sites(api) -> list[Json]:
+def _get_sites(api: StackAPI) -> list[Json]:
     # hacky way to get everything..
     res = api.fetch('sites')
     return res['items']
 
 
 @lru_cache
-def get_filter(api) -> str:
+def get_filter(api: StackAPI) -> str:
     res = api.fetch(
         'filters/create',
         base='withbody',
@@ -159,13 +159,13 @@ def get_filter(api) -> str:
 
 
 @lru_cache
-def get_all_sites(api) -> dict[str, str]:
+def get_all_sites(api: StackAPI) -> dict[str, str]:
     """Returns all the StackExchange sites as a dict, api_site_parameter -> name"""
     return {site['api_site_parameter']: site['name'] for site in _get_sites(api)}
 
 
 @lru_cache
-def get_user_sites(api) -> dict[str, str]:
+def get_user_sites(api: StackAPI) -> dict[str, str]:
     """
     Returns all the associated sites for the /me user. The /me user is the one who's
     access_token we're authorized with (so it's required)
@@ -203,7 +203,7 @@ class RetryMe(Exception):
     stop=stop_after_attempt(5),
     before_sleep=before_sleep_log(logger, logging.INFO),
 )
-def fetch_with_retry(api, *args, **kwargs):
+def fetch_with_retry(api: StackAPI, *args, **kwargs) -> Json:
     try:
         return api.fetch(*args, **kwargs)
     except StackAPIError as e:
@@ -227,7 +227,7 @@ class Exporter:
         self.api = _get_api(**self.api_params)
         self.filter = get_filter(self.api)
 
-    def get_site_api(self, site: str):
+    def get_site_api(self, site: str) -> StackAPI:
         api = _get_api(**self.api_params)
         sites = get_all_sites(api)
         api._name = sites[site]
@@ -273,9 +273,8 @@ class Exporter:
 
 
 def make_parser() -> argparse.ArgumentParser:
-    parser = Parser('Export your personal Stackexchange data')
-    setup_parser(
-        parser=parser,
+    parser = cli.make_parser(
+        description='Export your personal Stackexchange data',
         params=['key', 'access_token'],
     )
     parser.add_argument(
@@ -291,8 +290,7 @@ def make_parser() -> argparse.ArgumentParser:
 def main() -> None:
     parser = make_parser()
     args = parser.parse_args()
-    params = args.params
-    dumper = args.dumper
+    params = cli.get_params(parser, args)
 
     _UID = 'user_id'
     _uid = getattr(args, _UID)
@@ -318,7 +316,7 @@ def main() -> None:
     j = exporter.export_json(sites=sites)
 
     js = json.dumps(j, ensure_ascii=False, indent=1)
-    dumper(js)
+    cli.dump(js, path=args.path)
 
 
 if __name__ == '__main__':
