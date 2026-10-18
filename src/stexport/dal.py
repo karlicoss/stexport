@@ -1,16 +1,15 @@
 from __future__ import annotations
 
-import json
 from collections.abc import Iterable, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import NamedTuple
 
-from .exporthelpers import dal_helper
-from .exporthelpers.dal_helper import Json
-from .exporthelpers.logging_helper import make_logger
+import hpikit.cli.dal as cli
+from hpikit.json import Json, loads
+from kloggy import get_logger
 
-logger = make_logger(__name__)
+logger = get_logger(__name__)
 
 
 class Question(NamedTuple):
@@ -52,7 +51,7 @@ class DAL:
     def __init__(self, sources: Sequence[Path]) -> None:
         # TODO later, reconstruct from chunks?
         self.src = max(sorted(sources))
-        self.data = json.loads(self.src.read_text())
+        self.data = loads(self.src.read_bytes())
 
     def sites(self) -> Sequence[str]:
         return sorted(self.data.keys())
@@ -73,7 +72,7 @@ def demo(dal: DAL) -> None:
 
 
 def main() -> None:
-    dal_helper.main(DAL=DAL, demo=demo)
+    cli.main(DAL=DAL, demo=demo)
 
 
 if __name__ == '__main__':

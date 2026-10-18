@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from hpikit.json import Json
+
 from ..export import get_user_sites
-from ..exporthelpers.export_helper import Json
 
 
 class FakeApi:
